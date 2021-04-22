@@ -1,11 +1,13 @@
 <?php
 
 namespace App\Http\Controllers;
+//use Crypt;
 use Illuminate\Http\Request; 
 use App\Models\User;
 use Symfony\Component\HttpFoundation\Response; 
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Crypt;
 
 class UserController extends Controller
 {
@@ -73,7 +75,8 @@ class UserController extends Controller
         try {
 
             $data = $request->all();
-            $data['senha'] = Hash::make($data['senha']); 
+            //$data['senha'] = Hash::make($data['senha']); 
+            $data['senha'] = sha1($data['senha']); 
 
             $user = $this->model->create($data);
 
@@ -98,7 +101,7 @@ class UserController extends Controller
         try {
 
             $data = $request->all();
-            $data['senha'] = Hash::make($data['senha']); 
+            $data['senha'] = sha1($data['senha']); 
 
             if(isset($data['email'])){
                 unset($data['email']);
@@ -132,6 +135,45 @@ class UserController extends Controller
             return response()->json(['error' => 'Erro interno do Servidor'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
         
+    }
+
+    public function login(Request $request)
+    {
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'email' => 'required | max:100',
+                'senha' => 'required | max:20 | min:8'
+            ]
+        );
+
+        try {
+
+            $data = $request->all();
+            $hash = null;
+
+            if($this->model->validateLogin($data)){
+                $hash = $this->model->createToken($data);
+                if(isset($hash['token']) && !empty($hash['token'])){
+                    return response()->json( ['message' => 'Success', 'data' => $hash], Response::HTTP_OK);  
+                }else{  
+                    return response()->json(['error' => 'Não foi possivel gerar token'], Response::HTTP_FORBIDDEN);
+                }
+            }else{  
+                return response()->json(['error' => 'Email ou senha incorreto'], Response::HTTP_FORBIDDEN);
+            }
+            //return response()->json($hash, Response::HTTP_CREATED);
+        } catch (QueryException $exception) {
+            return response()->json(['error' => 'Erro interno do Servidor'], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    //TO DO:
+    //valida se tem hash e se esta valido, se expirado/ou não existente pede login para renovar. 
+    //tudo ok ele continua na operação. 
+    public function hasLogged()
+    {
+
     }
     
 }
