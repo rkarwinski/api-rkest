@@ -15,12 +15,22 @@ use Symfony\Component\HttpFoundation\Response;
 */
 
 $router->get('/api/users', 'UserController@getAll');
+$router->get('/api/parameters', 'ParameterController@getAll');
 
 $router->group(['prefix' => '/api/user'], function() use ($router){
     $router->get('/{id}', 'UserController@get');
     $router->post('/', 'UserController@create');
+    $router->post('/login', 'UserController@login');
     $router->put('/{id}', 'UserController@update');
     $router->delete('/{id}', 'UserController@delete');
+});
+
+
+$router->group(['prefix' => '/api/parameter'], function() use ($router){
+    $router->get('/{id}', 'ParameterController@get');
+    $router->post('/', 'ParameterController@create');
+    $router->put('/{id}', 'ParameterController@update');
+    $router->delete('/{id}', 'ParameterController@delete');
 });
 
 $router->get('/', function () use ($router) {
