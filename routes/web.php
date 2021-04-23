@@ -17,6 +17,9 @@ use Symfony\Component\HttpFoundation\Response;
 $router->get('/api/users', 'UserController@getAll');
 $router->get('/api/parameters', 'ParameterController@getAll');
 
+//teste - endpoint não ira existir
+$router->get('/api/spotify/token', 'SpotifyController@generateToken');
+
 $router->group(['prefix' => '/api/user'], function() use ($router){
     $router->get('/{id}', 'UserController@get');
     $router->post('/', 'UserController@create');

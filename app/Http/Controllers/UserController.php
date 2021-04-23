@@ -24,10 +24,18 @@ class UserController extends Controller
         $this->model = $mUser;
     }
 
-    public function getAll()
+    public function getAll(Request $request)
     {
 
         try {
+
+            $userId = $request->header('User'); 
+            $token  = $request->header('Authorization'); 
+            
+            if( !$this->model->hasLogged($token, $userId) ){
+                return response()->json(['error' => 'Usuario deslogado'], Response::HTTP_FORBIDDEN);
+            }
+
             $users = $this->model->all();
 
             if(count($users) > 0){
@@ -162,18 +170,9 @@ class UserController extends Controller
             }else{  
                 return response()->json(['error' => 'Email ou senha incorreto'], Response::HTTP_FORBIDDEN);
             }
-            //return response()->json($hash, Response::HTTP_CREATED);
         } catch (QueryException $exception) {
             return response()->json(['error' => 'Erro interno do Servidor'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-    }
-
-    //TO DO:
-    //valida se tem hash e se esta valido, se expirado/ou não existente pede login para renovar. 
-    //tudo ok ele continua na operação. 
-    public function hasLogged()
-    {
-
     }
     
 }

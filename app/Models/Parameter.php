@@ -11,5 +11,8 @@ class Parameter extends Model
         'nome',
         'valor'
     ];
+
+    public $timestamps = false;
+
     
 }

@@ -55,15 +55,29 @@ class User extends Model
         $data['data_gerado'] = date('Y-m-d H:i:s');
         $data['data_expirado'] = date('Y-m-d H:i:s', strtotime('+2 Hours'));
 
-        //TO DO 
-        //buscar se existe um token já e se é valido, se expirou renova / se não existir cria um novo.
-
-        if($tokens->create($data)){
+        if($tokens->insertOrUpdate($data)){
             return $data;
         }else{
             return $return;
         }
 
+    }
+
+    public function hasLogged( string $token, string $userId ) : bool
+    {
+        $mToken = new Token();
+        $user = $this->find($userId);
+
+        if(isset($user->email)){
+            $userToken = $mToken->find($user->email);
+            if(isset($userToken->token) && $userToken->token == $token){
+                if( strtotime(date('Y-m-d H:s:i')) <= strtotime($userToken->data_expirado) ){
+                    return true; 
+                }
+            }
+        }
+        
+        return false;
     }
 
 
