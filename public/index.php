@@ -13,6 +13,8 @@
 
 $app = require __DIR__.'/../bootstrap/app.php';
 
+date_default_timezone_set('America/Sao_Paulo');
+
 /*
 |--------------------------------------------------------------------------
 | Run The Application
