@@ -29,7 +29,7 @@ class Base extends Model
             unset($tmp);
         }
 
-        if($content_type == 'json'){
+        if($content_type == 'json' || $content_type == 'application/json'){
             $body_convert = json_encode($body);
         }
 

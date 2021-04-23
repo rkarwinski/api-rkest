@@ -82,6 +82,84 @@ class Spotify extends Model
         return DB::statement($sql);
     }
 
+    public function insertOrUpdateTrackPlaylist($data)
+    {
+        $count = 0;
+        $sql = "INSERT INTO spotify_playlist_tracks (id, 
+                                               playlist_id, 
+                                               titulo, 
+                                               artista, 
+                                               url_externa, 
+                                               url_api, 
+                                               url_imagem, 
+                                               id_artista, 
+                                               url_artista, 
+                                               id_album, 
+                                               titulo_album, 
+                                               url_album, 
+                                               url_external_album,
+                                               data_criado, 
+                                               data_atualizado) 
+                VALUES ";
+        
+        foreach ($data as $key => $value) {
+            $virgula = '';
+            $count++;
+
+            if( $count < count($data) ){
+                $virgula = ',';
+            }
+
+            $sql .= "('{$value['id']}', 
+                      '{$value['playlist_id']}', 
+                      '{$value['titulo']}', 
+                      '{$value['artista']}', 
+                      '{$value['url_externa']}', 
+                      '{$value['url_api']}', 
+                      '{$value['url_imagem']}', 
+                      '{$value['id_artista']}', 
+                      '{$value['url_artista']}', 
+                      '{$value['id_album']}', 
+                      '{$value['titulo_album']}', 
+                      '{$value['url_album']}', 
+                      '{$value['url_external_album']}',
+                       NOW(), 
+                       NOW())".$virgula; 
+        }
+                
+        $sql .= "ON DUPLICATE KEY UPDATE 
+                    titulo = VALUES(titulo), 
+                    artista = VALUES(artista), 
+                    url_externa = VALUES(url_externa), 
+                    url_api = VALUES(url_api), 
+                    url_imagem = VALUES(url_imagem), 
+                    id_artista = VALUES(id_artista), 
+                    url_artista = VALUES(url_artista), 
+                    id_album = VALUES(id_album), 
+                    titulo_album = VALUES(titulo_album), 
+                    url_album = VALUES(url_album), 
+                    url_external_album = VALUES(url_external_album), 
+                    data_atualizado = NOW()";
+
+        //print_r($sql); die;
+
+        return DB::statement($sql);
+    }
+
+    public function getUrlPlaylist( string $id ) :string 
+    {
+        $return = '';
+        
+        $sql = "SELECT url_musicas FROM spotify_playlists WHERE id = '{$id}' LIMIT 1";
+        $aReturn = DB::select($sql);
+        
+        if(isset($aReturn[0])){
+            $return = $aReturn[0]->url_musicas; 
+        }
+
+        return $return;
+    }
+
     public function hasLogged( string $email )
     {
         if($this->find($email)){
@@ -156,5 +234,32 @@ class Spotify extends Model
         return false; 
 
     }
+
+    public function getIdUserSpotify( string $token ) : string
+    {
+
+        $mParameter = new Parameter();
+        $mBase = new Base();
+
+        $pUrl = $mParameter->find('spotify-url_api');
+        $url  = $pUrl->valor . "me";
+
+        $header = [
+                 'Authorization' => $token,
+                ];
+
+        $response = $mBase->urlCall($url, 'GET', '', [], $header);
+
+        if(!is_object($response)){
+            $response = json_decode($response);
+        }
+
+        if(isset($response->id)){
+            return $response->id; 
+        }
+
+        return '';
+        
+    }   
     
 }
