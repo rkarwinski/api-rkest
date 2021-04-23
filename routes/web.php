@@ -17,15 +17,20 @@ use Symfony\Component\HttpFoundation\Response;
 $router->get('/api/users', 'UserController@getAll');
 $router->get('/api/parameters', 'ParameterController@getAll');
 
-//teste - endpoint não ira existir
-$router->get('/api/spotify/token', 'SpotifyController@generateToken');
-
 $router->group(['prefix' => '/api/user'], function() use ($router){
     $router->get('/{id}', 'UserController@get');
     $router->post('/', 'UserController@create');
     $router->post('/login', 'UserController@login');
     $router->put('/{id}', 'UserController@update');
     $router->delete('/{id}', 'UserController@delete');
+});
+
+$router->group(['prefix' => '/api/spotify'], function() use ($router){
+    $router->get('/login', 'SpotifyController@saveLogin');
+    $router->get('/grantPermission/{id}', 'SpotifyController@grantPermission');
+    $router->post('/playlists', 'SpotifyController@getPlaylistsForUser');
+    //$router->put('/{id}', 'UserController@update');
+    //$router->delete('/{id}', 'UserController@delete');
 });
 
 
