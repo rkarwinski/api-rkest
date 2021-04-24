@@ -366,5 +366,57 @@ class SpotifyController extends Controller
         return response()->json(['error' => 'Erro ao salvar playlists na Base de dados'], Response::HTTP_INTERNAL_SERVER_ERROR);
             
     }
+
+    public function addTracksInPlaylist(Request $request)
+    {
+        $mBase = new Base();
+        $mParameter = new Parameter();
+
+        $data = $request->all();
+
+        if(!$this->model->hasLogged($data['email'])){
+            return response()->json(['error' => 'Usuario não tem login registrado'], Response::HTTP_FORBIDDEN); 
+        }
+
+        if(!$this->model->isValideToken( $data['email'] )){
+            if(!$this->model->refleshLogin( $data['email'] )){
+                return response()->json(['error' => 'Usuario sem acesso. Não foi possivel renovar o token'], Response::HTTP_FORBIDDEN); 
+            }
+        }
+
+        $listTracks = $data['musicas'];
+
+        $uToken = $this->model->find($data['email']);
+        $token  = 'Bearer ' . $uToken->token;
+
+        $tracks = $this->model->searchTrack($token, $listTracks);
+
+        $pUrl = $mParameter->find('spotify-url_api');
+        $url  = $pUrl->valor . "playlists/{$data['id_playlist']}/tracks";
+
+        $body = [
+            'uris'   => $tracks['uris']
+        ];
+
+        $header = [
+                 'Authorization' => $token,
+                ];
+
+        $response = $mBase->urlCall($url, 'POST', 'application/json', $body, $header);
+
+        if(!is_object($response)){
+            $response = json_decode($response);
+        }
+        
+        if(isset($response->snapshot_id)){
+            return response()->json( ['message' => 'Success', 'total' => count($tracks['uris'])], Response::HTTP_OK);  
+        }
+
+        if(isset($response->error)){
+            return response()->json(['error' => $response->error->message], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        return response()->json(['error' => 'Não foi possivel adicionar as musicas na Playlist'], Response::HTTP_INTERNAL_SERVER_ERROR);
+    }
     
 }

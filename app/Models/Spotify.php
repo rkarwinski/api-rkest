@@ -259,6 +259,52 @@ class Spotify extends Model
         }
 
         return '';
+
+    }   
+
+    public function searchTrack( string $token, array $list ) : array
+    {
+        $return = []; 
+        $mParameter = new Parameter();
+        $mBase = new Base();
+
+        $pUrl = $mParameter->find('spotify-url_api');
+
+        if(is_array($list) && count($list) > 0){
+            foreach ($list as $key => $value) {
+                $parametros  = "?q={$mBase->tirarAcentos(str_replace(' ', '%20', $value['titulo']))}%20{$mBase->tirarAcentos(str_replace(' ', '%20', $value['artista']))}";
+                $parametros .= "&type=track";
+                $parametros .= "&market=BR";
+
+                $url  = "{$pUrl->valor}search{$parametros}";
+
+                $header = [
+                    'Authorization' => $token,
+                   ];
+   
+                $response = $mBase->urlCall($url, 'GET', '', [], $header);
+        
+                if(!is_object($response)){
+                    $response = json_decode($response);
+                }   
+
+                $count = 0;
+                if(isset($response->tracks) && $response->tracks->total > 0){
+                    foreach ($response->tracks->items as $key => $track) {
+                        $count++; 
+                        if(mb_strpos(strtoupper($track->name), strtoupper($value['titulo'])) !== false && $count == 1){
+                            $tmp = $track->uri; // . ' | ' . $track->name; 
+                            $return['uris'][] = $tmp; 
+                            unset($tmp);
+                        }
+                        
+                    }
+                }
+
+            }
+        }
+
+        return $return;        
         
     }   
     

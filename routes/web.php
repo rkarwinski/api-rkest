@@ -31,6 +31,7 @@ $router->group(['prefix' => '/api/spotify'], function() use ($router){
     $router->post('/playlists', 'SpotifyController@getPlaylistsForUser');
     $router->post('/playlists/tracks', 'SpotifyController@getMusicsForPlaylists');
     $router->post('/playlists/create', 'SpotifyController@createPlaylistForUser');
+    $router->post('/playlists/tracks/add', 'SpotifyController@addTracksInPlaylist');
     //$router->put('/{id}', 'UserController@update');
     //$router->delete('/{id}', 'UserController@delete');
 });
