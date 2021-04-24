@@ -16,10 +16,10 @@ class Parameter extends Model
     protected $primaryKey = "nome";
     public $timestamps = false;
 
-    public function insertOrUpdate(string $data)
+    public function insertOrUpdate(string $name, string $data)
     {
         $sql = "INSERT INTO parametros (nome, valor) 
-                VALUES ('spotify-code_token', '{$data}')
+                VALUES ('{$name}', '{$data}')
                 ON DUPLICATE KEY UPDATE 
                 valor = VALUES(valor)"; 
 

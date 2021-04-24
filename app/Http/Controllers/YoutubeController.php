@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 use Illuminate\Http\Request; 
-use App\Models\Spotify;
+use App\Models\Youtube;
 use App\Models\Base;
 use App\Models\Parameter;
 use App\Models\User;
@@ -10,7 +10,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 
-class SpotifyController extends Controller
+class YoutubeController extends Controller
 {
 
     private $model; 
@@ -20,9 +20,9 @@ class SpotifyController extends Controller
      *
      * @return void
      */
-    public function __construct(Spotify $mSpotify)
+    public function __construct(Youtube $mYoutube)
     {
-        $this->model = $mSpotify;
+        $this->model = $mYoutube;
     }
 
     public function grantPermission( $id )
@@ -34,21 +34,22 @@ class SpotifyController extends Controller
             $user  = $mUser->find($id);
             $email = $user->email;
 
-            $_SESSION['spotify']["user_id"] = $email;
-            $redirect_url = SPOTIFY::URL_REDIRECT; 
+            $_SESSION['youtube']["user_id"] = $email;
+            $redirect_url = YOUTUBE::URL_REDIRECT; 
 
             $mParameter = new Parameter();
-            $pUrl      = $mParameter->find('spotify-url_auth_api');
-            $pClientId = $mParameter->find('spotify-client_id');
+            $pUrl      = $mParameter->find('youtube-url_auth_api');
+            $pClientId = $mParameter->find('youtube-client_id');
             
             $parametros  = "?client_id={$pClientId->valor}";
-            $parametros .= '&response_type=code';
-            $parametros .= '&scope=user-top-read%20playlist-modify-public%20playlist-modify-private%20user-read-currently-playing%20user-library-modify%20playlist-read-private%20user-library-read%20playlist-read-collaborative';
+            $parametros .= '&access_type=offline';
             $parametros .= "&redirect_uri={$redirect_url}";
+            $parametros .= '&response_type=code';
+            $parametros .= '&scope=https://www.googleapis.com/auth/youtube';
+            
 
-            $url = $pUrl->valor . 'authorize' . $parametros;
+            $url = $pUrl->valor . $parametros;
         
-            //gera o redirecionamento para a permissao 
             return redirect()->to($url);
     
         } catch (QueryException $exception) {
@@ -66,23 +67,22 @@ class SpotifyController extends Controller
             }
 
             $mParameter = new Parameter();
-            if($mParameter->insertOrUpdate('spotify-code_token', $code)){
+            if($mParameter->insertOrUpdate('youtube-code_token',$code)){
                 //gera o token 
-                $pUrl      = $mParameter->find('spotify-url_auth_api');
-                $pClientId = $mParameter->find('spotify-client_id');
-                $pSecretId = $mParameter->find('spotify-client_secret');
+                $pUrl      = $mParameter->find('youtube-url_auth2_api');
+                $pClientId = $mParameter->find('youtube-client_id');
+                $pSecretId = $mParameter->find('youtube-client_secret');
 
-                $url  = $pUrl->valor . 'api/token';
-                $basic_token = 'Basic ' . base64_encode($pClientId->valor . ':' .$pSecretId->valor);
-
+                $url  = $pUrl->valor . 'token';
                 $body = [
                         'grant_type' => 'authorization_code',
                         'code'       => $code,
-                        'redirect_uri' => SPOTIFY::URL_REDIRECT
+                        'client_id'     => $pClientId->valor,
+                        'client_secret' => $pSecretId->valor,
+                        'redirect_uri'  => YOUTUBE::URL_REDIRECT
                         ];
 
                 $header = [
-                         'Authorization' => $basic_token,
                          'Content-Type'  => 'application/x-www-form-urlencoded'
                         ];
 
@@ -94,10 +94,9 @@ class SpotifyController extends Controller
                     $cResponse = json_decode($cResponse);
                 }
 
-                //salva o token no banco
                 if(isset($cResponse->access_token)){
                     session_start();
-                    $data['id_user'] = $_SESSION['spotify']["user_id"];
+                    $data['id_user'] = $_SESSION['youtube']["user_id"];
                     $data['token'] = $cResponse->access_token;
                     $data['reflesh_token'] = $cResponse->refresh_token;
                     $data['data_gerado'] = date('Y-m-d H::s:i');
@@ -136,23 +135,19 @@ class SpotifyController extends Controller
         }
 
         $uToken = $this->model->find($data['email']);
-        $pUrl   = $mParameter->find('spotify-url_api');
-        
-        $url   = $pUrl->valor . 'me/playlists';
-        $token = 'Bearer ' . $uToken->token;
-
-        $body = [];
-
+        $pUrl   = $mParameter->find('youtube-url_api');
+        $token  = 'Bearer ' . $uToken->token;
+        $body   = [];
         $header = [
                  'Authorization' => $token,
                 ];
-
+        
         $next = null; 
 
         do {
-
-            if($next != null && empty($url)){
-                $url = $response->next; 
+            $url   = $pUrl->valor . 'playlists?part=snippet&mine=true';
+            if($next != null){
+                $url .= '&pageToken=' . $next; 
                 $next = null; 
             }
 
@@ -162,29 +157,21 @@ class SpotifyController extends Controller
                 $response = json_decode($response);
             }
 
-            if(isset($response->total) && $response->total > 0){
+
+            if(isset($response->items) && count($response->items) > 0){
                 foreach ($response->items as $key => $value) {
                     $tmp['id']          = $value->id; 
                     $tmp['user_id']     = $data['email'];
-                    $tmp['titulo']      = addslashes($value->name); 
-                    $tmp['url_externa'] = $value->external_urls->spotify; 
-                    $tmp['url_api']     = $value->href; 
-                    $tmp['url_musicas'] = $value->tracks->href; 
-                    $tmp['total_musicas'] = (int)$value->tracks->total; 
-
-                    if(isset($value->images) && count($value->images) > 0){
-                        $tmp['url_imagem']  = $value->images[0]->url;
-                    }else{
-                        $tmp['url_imagem']  = ''; 
-                    }
+                    $tmp['titulo']      = addslashes($value->snippet->title); 
+                    $tmp['canal_id']    = $value->snippet->channelId; 
+                    $tmp['url_imagem']  = $value->snippet->thumbnails->default->url;
 
                     $insert[] = $tmp;
                 }
 
             }    
 
-            $url = '';
-            $next = (isset($response->next)) ? $response->next : null;
+            $next = (isset($response->nextPageToken)) ? $response->nextPageToken : null;
 
         } while ($next != null);
 
@@ -220,23 +207,21 @@ class SpotifyController extends Controller
         }
 
         $uToken = $this->model->find($data['email']);
-        $pUrl   = $mParameter->find('spotify-url_api');
-        
-        $sUrl  = $this->model->getUrlPlaylist($data['id_playlist']);
-        $url   = $sUrl.'?market=BR';
-        $token = 'Bearer ' . $uToken->token;
-
-        $body = [];
+        $pUrl   = $mParameter->find('youtube-url_api');
+        $token  = 'Bearer ' . $uToken->token;
+        $body   = [];
 
         $header = [
                  'Authorization' => $token,
                 ];
 
+        $next = null; 
+        
         do {
-            $next = null; 
-
-            if($next != null && empty($url)){
-                $url = $response->next; 
+            $url   = $pUrl->valor . "playlistItems?part=snippet&playlistId={$data['id_playlist']}";
+            if($next != null){
+                $url .= '&pageToken=' . $next; 
+                $next = null; 
             }
 
             $response = $mBase->urlCall($url, 'GET', '', $body, $header);
@@ -245,37 +230,24 @@ class SpotifyController extends Controller
                 $response = json_decode($response);
             }
 
-            if(isset($response->total) && $response->total > 0){
+            if(isset($response->items) && count($response->items) > 0){
                 foreach ($response->items as $key => $value) {
-                    $tmp['id']          = $value->track->id; 
-                    $tmp['playlist_id'] = $data['id_playlist'];
-                    $tmp['titulo']      = addslashes($value->track->name); 
-                    $tmp['artista']     = addslashes($value->track->album->artists[0]->name); 
-                    $tmp['id_artista']  = $value->track->album->artists[0]->id; 
-                    $tmp['url_artista'] = $value->track->album->artists[0]->href; 
-                    $tmp['url_externa'] = $value->track->preview_url;
-                    $tmp['url_api']     = $value->track->href; 
-                    $tmp['titulo_album']   = $value->track->album->name; 
-                    $tmp['id_album']       = $value->track->album->id; 
-                    $tmp['url_album']      = $value->track->album->href; 
-                    $tmp['url_external_album'] = $value->track->album->external_urls->spotify; 
 
-                    if(isset($value->track->album->images) && count($value->track->album->images) > 0){
-                        $tmp['url_imagem']  = $value->track->album->images[0]->url;
-                    }else{
-                        $tmp['url_imagem']  = ''; 
-                    }
+                    $tmp['id']          = $value->id; 
+                    $tmp['playlist_id'] = $data['id_playlist'];
+                    $tmp['video_id']    = $value->snippet->resourceId->videoId;
+                    $tmp['titulo']      = addslashes($value->snippet->title); 
+                    $tmp['canal']       = isset($value->snippet->videoOwnerChannelTitle) ? $value->snippet->videoOwnerChannelTitle : ''; 
+                    $tmp['canal_id']    = isset($value->snippet->videoOwnerChannelId) ? $value->snippet->videoOwnerChannelId : ''; 
+                    $tmp['url_imagem']  = isset($value->snippet->thumbnails->default->url) ? $value->snippet->thumbnails->default->url : '';
 
                     $insert[] = $tmp;
                 }
 
             }    
-
-            $url = '';
-            $next = (isset($response->next)) ? $response->next : null;
+            $next = (isset($response->nextPageToken)) ? $response->nextPageToken : null;
 
         } while ($next != null);
-
 
         if( isset($insert) && count($insert) > 0 ){
             if($this->model->insertOrUpdateTrackPlaylist($insert)){
@@ -290,6 +262,7 @@ class SpotifyController extends Controller
 
     }
 
+    ## ## ## ## ## 
     public function createPlaylistForUser(Request $request)
     {   
         $mBase = new Base();
@@ -310,24 +283,19 @@ class SpotifyController extends Controller
         $uToken = $this->model->find($data['email']);
         $token  = 'Bearer ' . $uToken->token;
 
-        //capturar o id user 
-        $idSpotifyUser = $this->model->getIdUserSpotify($token);
-        
-        if(empty($idSpotifyUser)){
-            return response()->json(['error' => 'ID do Usuario não encontrado'], Response::HTTP_FORBIDDEN); 
- 
-        }
-                    
-        $pUrl = $mParameter->find('spotify-url_api');
-        $url  = $pUrl->valor . "users/{$idSpotifyUser}/playlists";
+        $pUrl = $mParameter->find('youtube-url_api');
+        $url  = $pUrl->valor . "playlists?part=snippet,status";
 
         $body = [
-            'name'   => addslashes($data['titulo']),
-            'public' => $data['publica'],
-            'collaborative' => $data['colaborativa'],
-            'description'   => addslashes($data['descricao'])
+            'snippet' => [
+                'title' => addslashes($data['titulo']),
+                'description' => addslashes($data['descricao'])
+            ], 
+            'status'=>[
+                'privacyStatus'=> $data['status']
+            ]
         ];
-
+        
         $header = [
                  'Authorization' => $token,
                 ];
@@ -337,6 +305,8 @@ class SpotifyController extends Controller
         if(!is_object($response)){
             $response = json_decode($response);
         }
+
+            echo '<pre>'; print_r($response); die;
 
         if(isset($response->id)){
             $tmp['id']          = $response->id; 
