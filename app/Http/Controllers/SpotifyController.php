@@ -43,6 +43,7 @@ class SpotifyController extends Controller
             
             $parametros  = "?client_id={$pClientId->valor}";
             $parametros .= '&response_type=code';
+            $parametros .= '&scope=user-top-read%20playlist-modify-public%20playlist-modify-private%20user-read-currently-playing%20user-library-modify%20playlist-read-private%20user-library-read%20playlist-read-collaborative';
             $parametros .= "&redirect_uri={$redirect_url}";
 
             $url = $pUrl->valor . 'authorize' . $parametros;
@@ -197,6 +198,225 @@ class SpotifyController extends Controller
 
         return response()->json(['error' => 'Nenhuma Playlist Processada'], Response::HTTP_INTERNAL_SERVER_ERROR);
 
+    }
+
+    public function getMusicsForPlaylists(Request $request)
+    {
+        $mBase = new Base();
+        $mParameter = new Parameter();
+
+        $data = $request->all();
+
+        if(!$this->model->hasLogged($data['email'])){
+            return response()->json(['error' => 'Usuario não tem login registrado'], Response::HTTP_FORBIDDEN); 
+        }
+
+        if(!$this->model->isValideToken( $data['email'] )){
+            if(!$this->model->refleshLogin( $data['email'] )){
+                return response()->json(['error' => 'Usuario sem acesso. Não foi possivel renovar o token'], Response::HTTP_FORBIDDEN); 
+            }
+        }
+
+        $uToken = $this->model->find($data['email']);
+        $pUrl   = $mParameter->find('spotify-url_api');
+        
+        $sUrl  = $this->model->getUrlPlaylist($data['id_playlist']);
+        $url   = $sUrl.'?market=BR';
+        $token = 'Bearer ' . $uToken->token;
+
+        $body = [];
+
+        $header = [
+                 'Authorization' => $token,
+                ];
+
+        do {
+            $next = null; 
+
+            if($next != null && empty($url)){
+                $url = $response->next; 
+            }
+
+            $response = $mBase->urlCall($url, 'GET', '', $body, $header);
+
+            if(!is_object($response)){
+                $response = json_decode($response);
+            }
+
+            if(isset($response->total) && $response->total > 0){
+                foreach ($response->items as $key => $value) {
+                    $tmp['id']          = $value->track->id; 
+                    $tmp['playlist_id'] = $data['id_playlist'];
+                    $tmp['titulo']      = addslashes($value->track->name); 
+                    $tmp['artista']     = addslashes($value->track->album->artists[0]->name); 
+                    $tmp['id_artista']  = $value->track->album->artists[0]->id; 
+                    $tmp['url_artista'] = $value->track->album->artists[0]->href; 
+                    $tmp['url_externa'] = $value->track->preview_url;
+                    $tmp['url_api']     = $value->track->href; 
+                    $tmp['titulo_album']   = $value->track->album->name; 
+                    $tmp['id_album']       = $value->track->album->id; 
+                    $tmp['url_album']      = $value->track->album->href; 
+                    $tmp['url_external_album'] = $value->track->album->external_urls->spotify; 
+
+                    if(isset($value->track->album->images) && count($value->track->album->images) > 0){
+                        $tmp['url_imagem']  = $value->track->album->images[0]->url;
+                    }else{
+                        $tmp['url_imagem']  = ''; 
+                    }
+
+                    $insert[] = $tmp;
+                }
+
+            }    
+
+            $url = '';
+            $next = (isset($response->next)) ? $response->next : null;
+
+        } while ($next != null);
+
+
+        if( isset($insert) && count($insert) > 0 ){
+            if($this->model->insertOrUpdateTrackPlaylist($insert)){
+                return response()->json( ['message' => 'Success', 'total' => count($insert)], Response::HTTP_OK);  
+            }
+
+            return response()->json(['error' => 'Erro ao salvar as Musica da playlist na Base de dados'], Response::HTTP_INTERNAL_SERVER_ERROR);
+ 
+        }
+
+        return response()->json(['error' => 'Nenhuma Musica da Playlist Processada'], Response::HTTP_INTERNAL_SERVER_ERROR);
+
+    }
+
+    public function createPlaylistForUser(Request $request)
+    {   
+        $mBase = new Base();
+        $mParameter = new Parameter();
+
+        $data = $request->all();
+
+        if(!$this->model->hasLogged($data['email'])){
+            return response()->json(['error' => 'Usuario não tem login registrado'], Response::HTTP_FORBIDDEN); 
+        }
+
+        if(!$this->model->isValideToken( $data['email'] )){
+            if(!$this->model->refleshLogin( $data['email'] )){
+                return response()->json(['error' => 'Usuario sem acesso. Não foi possivel renovar o token'], Response::HTTP_FORBIDDEN); 
+            }
+        }
+
+        $uToken = $this->model->find($data['email']);
+        $token  = 'Bearer ' . $uToken->token;
+
+        //capturar o id user 
+        $idSpotifyUser = $this->model->getIdUserSpotify($token);
+        
+        if(empty($idSpotifyUser)){
+            return response()->json(['error' => 'ID do Usuario não encontrado'], Response::HTTP_FORBIDDEN); 
+ 
+        }
+                    
+        $pUrl = $mParameter->find('spotify-url_api');
+        $url  = $pUrl->valor . "users/{$idSpotifyUser}/playlists";
+
+        $body = [
+            'name'   => addslashes($data['titulo']),
+            'public' => $data['publica'],
+            'collaborative' => $data['colaborativa'],
+            'description'   => addslashes($data['descricao'])
+        ];
+
+        $header = [
+                 'Authorization' => $token,
+                ];
+
+        $response = $mBase->urlCall($url, 'POST', 'application/json', $body, $header);
+
+        if(!is_object($response)){
+            $response = json_decode($response);
+        }
+
+        if(isset($response->id)){
+            $tmp['id']          = $response->id; 
+            $tmp['user_id']     = $data['email'];
+            $tmp['titulo']      = addslashes($response->name); 
+            $tmp['url_externa'] = $response->external_urls->spotify; 
+            $tmp['url_api']     = $response->href; 
+            $tmp['url_musicas'] = $response->tracks->href; 
+            $tmp['total_musicas'] = (int)$response->tracks->total; 
+            $tmp['url_imagem']    = ''; 
+    
+            $insert[] = $tmp;
+            unset($tmp);
+    
+            if( isset($insert) && count($insert) > 0 ){
+                if($this->model->insertOrUpdatePlaylist($insert)){
+                    return response()->json( ['message' => 'Success', 'total' => count($insert)], Response::HTTP_OK);  
+                }
+    
+                return response()->json(['error' => 'Erro ao salvar playlists na Base de dados'], Response::HTTP_INTERNAL_SERVER_ERROR);
+     
+            }
+        }
+
+        if(isset($response->error)){
+            return response()->json(['error' => $response->error->message], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        return response()->json(['error' => 'Erro ao salvar playlists na Base de dados'], Response::HTTP_INTERNAL_SERVER_ERROR);
+            
+    }
+
+    public function addTracksInPlaylist(Request $request)
+    {
+        $mBase = new Base();
+        $mParameter = new Parameter();
+
+        $data = $request->all();
+
+        if(!$this->model->hasLogged($data['email'])){
+            return response()->json(['error' => 'Usuario não tem login registrado'], Response::HTTP_FORBIDDEN); 
+        }
+
+        if(!$this->model->isValideToken( $data['email'] )){
+            if(!$this->model->refleshLogin( $data['email'] )){
+                return response()->json(['error' => 'Usuario sem acesso. Não foi possivel renovar o token'], Response::HTTP_FORBIDDEN); 
+            }
+        }
+
+        $listTracks = $data['musicas'];
+
+        $uToken = $this->model->find($data['email']);
+        $token  = 'Bearer ' . $uToken->token;
+
+        $tracks = $this->model->searchTrack($token, $listTracks);
+
+        $pUrl = $mParameter->find('spotify-url_api');
+        $url  = $pUrl->valor . "playlists/{$data['id_playlist']}/tracks";
+
+        $body = [
+            'uris'   => $tracks['uris']
+        ];
+
+        $header = [
+                 'Authorization' => $token,
+                ];
+
+        $response = $mBase->urlCall($url, 'POST', 'application/json', $body, $header);
+
+        if(!is_object($response)){
+            $response = json_decode($response);
+        }
+        
+        if(isset($response->snapshot_id)){
+            return response()->json( ['message' => 'Success', 'total' => count($tracks['uris'])], Response::HTTP_OK);  
+        }
+
+        if(isset($response->error)){
+            return response()->json(['error' => $response->error->message], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        return response()->json(['error' => 'Não foi possivel adicionar as musicas na Playlist'], Response::HTTP_INTERNAL_SERVER_ERROR);
     }
     
 }

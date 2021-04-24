@@ -29,6 +29,9 @@ $router->group(['prefix' => '/api/spotify'], function() use ($router){
     $router->get('/login', 'SpotifyController@saveLogin');
     $router->get('/grantPermission/{id}', 'SpotifyController@grantPermission');
     $router->post('/playlists', 'SpotifyController@getPlaylistsForUser');
+    $router->post('/playlists/tracks', 'SpotifyController@getMusicsForPlaylists');
+    $router->post('/playlists/create', 'SpotifyController@createPlaylistForUser');
+    $router->post('/playlists/tracks/add', 'SpotifyController@addTracksInPlaylist');
     //$router->put('/{id}', 'UserController@update');
     //$router->delete('/{id}', 'UserController@delete');
 });
