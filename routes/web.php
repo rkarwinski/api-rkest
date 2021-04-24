@@ -32,10 +32,16 @@ $router->group(['prefix' => '/api/spotify'], function() use ($router){
     $router->post('/playlists/tracks', 'SpotifyController@getMusicsForPlaylists');
     $router->post('/playlists/create', 'SpotifyController@createPlaylistForUser');
     $router->post('/playlists/tracks/add', 'SpotifyController@addTracksInPlaylist');
-    //$router->put('/{id}', 'UserController@update');
-    //$router->delete('/{id}', 'UserController@delete');
 });
 
+$router->group(['prefix' => '/api/youtube'], function() use ($router){
+    $router->get('/login', 'YoutubeController@saveLogin');
+    $router->get('/grantPermission/{id}', 'YoutubeController@grantPermission');
+    $router->post('/playlists', 'YoutubeController@getPlaylistsForUser');
+    $router->post('/playlists/tracks', 'YoutubeController@getMusicsForPlaylists');
+    $router->post('/playlists/create', 'YoutubeController@createPlaylistForUser');
+    //$router->post('/playlists/tracks/add', 'YoutubeController@addTracksInPlaylist');
+});
 
 $router->group(['prefix' => '/api/parameter'], function() use ($router){
     $router->get('/{id}', 'ParameterController@get');
