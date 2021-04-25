@@ -193,27 +193,31 @@ class Youtube extends Model
 
     }
 
-    public function getIdUserYoutube( string $token ) : string
+    public function getVideoId( string $token, string $id ) : string
     {
 
         $mParameter = new Parameter();
         $mBase = new Base();
 
         $pUrl = $mParameter->find('youtube-url_api');
-        $url  = $pUrl->valor . "me";
+
+        $parametros  = "?part=snippet,contentDetails,id"; 
+        $parametros .= "&id={$id}";
+
+        $url  = "{$pUrl->valor}videos{$parametros}";
 
         $header = [
-                 'Authorization' => $token,
-                ];
+            'Authorization' => $token
+            ];
 
         $response = $mBase->urlCall($url, 'GET', '', [], $header);
 
         if(!is_object($response)){
             $response = json_decode($response);
-        }
+        }   
 
-        if(isset($response->id)){
-            return $response->id; 
+        if(isset($response->items[0]->id)){
+            return $response->items[0]->id; 
         }
 
         return '';
@@ -230,14 +234,15 @@ class Youtube extends Model
 
         if(is_array($list) && count($list) > 0){
             foreach ($list as $key => $value) {
-                $parametros  = "?q={$mBase->tirarAcentos(str_replace(' ', '%20', $value['titulo']))}%20{$mBase->tirarAcentos(str_replace(' ', '%20', $value['artista']))}";
-                $parametros .= "&type=track";
-                $parametros .= "&market=BR";
+                $parametros  = "?part=snippet"; 
+                $parametros .= "&q={$mBase->tirarAcentos(str_replace(' ', '%20', $value['titulo']))}%20{$mBase->tirarAcentos(str_replace(' ', '%20', $value['artista']))}";
+                $parametros .= "&regionCode=BR";
+                $parametros .= "&type=video";
 
                 $url  = "{$pUrl->valor}search{$parametros}";
 
                 $header = [
-                    'Authorization' => $token,
+                    'Authorization' => $token
                    ];
    
                 $response = $mBase->urlCall($url, 'GET', '', [], $header);
@@ -247,11 +252,12 @@ class Youtube extends Model
                 }   
 
                 $count = 0;
-                if(isset($response->tracks) && $response->tracks->total > 0){
-                    foreach ($response->tracks->items as $key => $track) {
+                if(isset($response->items) && $response->pageInfo->totalResults > 0){
+                    foreach ($response->items as $key => $track) {
                         $count++; 
-                        if(mb_strpos(strtoupper($track->name), strtoupper($value['titulo'])) !== false && $count == 1){
-                            $tmp = $track->uri; // . ' | ' . $track->name; 
+                        if(mb_strpos(strtoupper($track->snippet->title), strtoupper($value['titulo'])) !== false && $count == 1){
+                            //$tmp = $this->getVideoId($token, $track->id->videoId); 
+                            $tmp = $track->id->videoId; 
                             $return['uris'][] = $tmp; 
                             unset($tmp);
                         }

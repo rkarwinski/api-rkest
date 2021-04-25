@@ -262,7 +262,6 @@ class YoutubeController extends Controller
 
     }
 
-    ## ## ## ## ## 
     public function createPlaylistForUser(Request $request)
     {   
         $mBase = new Base();
@@ -298,6 +297,7 @@ class YoutubeController extends Controller
         
         $header = [
                  'Authorization' => $token,
+                 'Content-Type'  => 'application/json'
                 ];
 
         $response = $mBase->urlCall($url, 'POST', 'application/json', $body, $header);
@@ -306,17 +306,12 @@ class YoutubeController extends Controller
             $response = json_decode($response);
         }
 
-            echo '<pre>'; print_r($response); die;
-
         if(isset($response->id)){
             $tmp['id']          = $response->id; 
             $tmp['user_id']     = $data['email'];
-            $tmp['titulo']      = addslashes($response->name); 
-            $tmp['url_externa'] = $response->external_urls->spotify; 
-            $tmp['url_api']     = $response->href; 
-            $tmp['url_musicas'] = $response->tracks->href; 
-            $tmp['total_musicas'] = (int)$response->tracks->total; 
-            $tmp['url_imagem']    = ''; 
+            $tmp['titulo']      = addslashes($response->snippet->title); 
+            $tmp['canal_id']    = $response->snippet->channelId; 
+            $tmp['url_imagem']  = $response->snippet->thumbnails->default->url;
     
             $insert[] = $tmp;
             unset($tmp);
@@ -361,34 +356,52 @@ class YoutubeController extends Controller
         $uToken = $this->model->find($data['email']);
         $token  = 'Bearer ' . $uToken->token;
 
+        
+        //como buscar 
         $tracks = $this->model->searchTrack($token, $listTracks);
 
-        $pUrl = $mParameter->find('spotify-url_api');
-        $url  = $pUrl->valor . "playlists/{$data['id_playlist']}/tracks";
+        $pUrl = $mParameter->find('youtube-url_api');
+        $url  = $pUrl->valor . "playlistItems?part=snippet";
 
-        $body = [
-            'uris'   => $tracks['uris']
-        ];
+        $add = 0;
+        $err = 0;
 
-        $header = [
-                 'Authorization' => $token,
+        if(isset($tracks['uris']) && is_array($tracks['uris']) && count($tracks['uris']) > 0){
+            foreach ($tracks['uris'] as $key => $value) {
+                $body = [
+                    'snippet' => [
+                        'playlistId' => $data['id_playlist'],
+                        'resourceId' => [
+                            'kind' => 'youtube#video',
+                            'videoId' => $value
+                        ]
+                    ]
                 ];
+    
+                $header = [
+                        'Authorization' => $token,
+                        'Content-Type'  => 'application/json'
+                        ];
+    
+                $response = $mBase->urlCall($url, 'POST', 'application/json', $body, $header);
+    
+                if(!is_object($response)){
+                    $response = json_decode($response);
+                }
 
-        $response = $mBase->urlCall($url, 'POST', 'application/json', $body, $header);
+                if(isset($response->kind)){
+                    $add++; 
+                }else{
+                    $err++; 
+                }
+            }
 
-        if(!is_object($response)){
-            $response = json_decode($response);
+        }else{
+            return response()->json(['error' => 'Nenhuma musica encontrada'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
         
-        if(isset($response->snapshot_id)){
-            return response()->json( ['message' => 'Success', 'total' => count($tracks['uris'])], Response::HTTP_OK);  
-        }
+        return response()->json( ['message' => 'Success', 'total' => count($tracks['uris']), 'inserted' => $add, 'error' => $err], Response::HTTP_OK);  
 
-        if(isset($response->error)){
-            return response()->json(['error' => $response->error->message], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
-
-        return response()->json(['error' => 'Não foi possivel adicionar as musicas na Playlist'], Response::HTTP_INTERNAL_SERVER_ERROR);
     }
     
 }

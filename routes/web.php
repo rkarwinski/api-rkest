@@ -40,7 +40,7 @@ $router->group(['prefix' => '/api/youtube'], function() use ($router){
     $router->post('/playlists', 'YoutubeController@getPlaylistsForUser');
     $router->post('/playlists/tracks', 'YoutubeController@getMusicsForPlaylists');
     $router->post('/playlists/create', 'YoutubeController@createPlaylistForUser');
-    //$router->post('/playlists/tracks/add', 'YoutubeController@addTracksInPlaylist');
+    $router->post('/playlists/tracks/add', 'YoutubeController@addTracksInPlaylist');
 });
 
 $router->group(['prefix' => '/api/parameter'], function() use ($router){
