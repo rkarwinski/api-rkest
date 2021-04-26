@@ -14,6 +14,9 @@ class Parameter extends Model
     ];
 
     protected $primaryKey = "nome";
+    public $incrementing = false;
+    protected $keyType = 'string';
+
     public $timestamps = false;
 
     public function insertOrUpdate(string $name, string $data)

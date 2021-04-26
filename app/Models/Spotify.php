@@ -17,6 +17,8 @@ class Spotify extends Model
     ];
 
     protected $primaryKey = "id_user";
+    public $incrementing = false;
+    protected $keyType = 'string';
     public $timestamps = false;
 
     const URL_REDIRECT = 'http://localhost:8000/api/spotify/login';
