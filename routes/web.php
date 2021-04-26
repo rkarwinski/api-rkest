@@ -14,6 +14,16 @@ use Symfony\Component\HttpFoundation\Response;
 |
 */
 
+//$router->options('{path:.+}', function () {
+//    return response('OK',200)
+//    ->header('Access-Control-Allow-Origin', '*')
+//    ->header('Access-Control-Allow-Methods','OPTIONS, GET, POST, PUT, DELETE')
+//    ->header('Access-Control-Allow-Credentials', 'true')
+//    ->header('Access-Control-Allow-Headers'    , 'Content-Type, Authorization, X-Requested-With')
+//    ->header('Access-Control-Max-Age'          , '86400')
+//    ->header('Access-Control-Allow-Headers', 'Content-Type, Origin');  
+//});
+
 $router->get('/api/users', 'UserController@getAll');
 $router->get('/api/parameters', 'ParameterController@getAll');
 
