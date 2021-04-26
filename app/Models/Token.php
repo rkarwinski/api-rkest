@@ -21,6 +21,8 @@ class Token extends Model
     ];
 
     protected $primaryKey = "id_user";
+    public $incrementing = false;
+    protected $keyType = 'string';
     public $timestamps = false;
 
     public function insertOrUpdate($data)
