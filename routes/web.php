@@ -37,6 +37,8 @@ $router->group(['prefix' => '/api/user'], function() use ($router){
 
 $router->group(['prefix' => '/api/spotify'], function() use ($router){
     $router->get('/login', 'SpotifyController@saveLogin');
+    $router->get('/playlists/list', 'SpotifyController@getAll');
+    $router->get('/playlists/musics/{id}', 'SpotifyController@listMusics');
     $router->get('/grantPermission/{id}', 'SpotifyController@grantPermission');
     $router->post('/playlists', 'SpotifyController@getPlaylistsForUser');
     $router->post('/playlists/tracks', 'SpotifyController@getMusicsForPlaylists');
@@ -46,6 +48,8 @@ $router->group(['prefix' => '/api/spotify'], function() use ($router){
 
 $router->group(['prefix' => '/api/youtube'], function() use ($router){
     $router->get('/login', 'YoutubeController@saveLogin');
+    $router->get('/playlists/list', 'YoutubeController@getAll');
+    $router->get('/playlists/musics/{id}', 'YoutubeController@listMusics');
     $router->get('/grantPermission/{id}', 'YoutubeController@grantPermission');
     $router->post('/playlists', 'YoutubeController@getPlaylistsForUser');
     $router->post('/playlists/tracks', 'YoutubeController@getMusicsForPlaylists');

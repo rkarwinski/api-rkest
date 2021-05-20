@@ -420,5 +420,59 @@ class SpotifyController extends Controller
 
         return response()->json(['error' => 'Não foi possivel adicionar as musicas na Playlist'], Response::HTTP_INTERNAL_SERVER_ERROR);
     }
+
+    public function getAll(Request $request)
+    {
+
+        try {
+
+            $mUser  = new User(); 
+            $userId = $request->header('User'); 
+            $token  = $request->header('Authorization'); 
+            
+            if( !$mUser->hasLogged($token, $userId) ){
+                return response()->json(['error' => 'Usuario deslogado'], Response::HTTP_FORBIDDEN);
+            }
+
+            $playlists = $this->model->listAll($userId);
+
+            if(count($playlists) > 0){
+                $playlists['total'] = count($playlists);
+                return response()->json($playlists, Response::HTTP_OK);
+            }
+    
+            return response()->json(['total' => 0], Response::HTTP_OK);    
+        } catch (QueryException $exception) {
+            return response()->json(['error' => 'Erro interno do Servidor'], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+       
+    }
+
+    public function listMusics(string $id, Request $request)
+    {
+
+        try {
+
+            $mUser  = new User(); 
+            $userId = $request->header('User'); 
+            $token  = $request->header('Authorization'); 
+            
+            if( !$mUser->hasLogged($token, $userId) ){
+                return response()->json(['error' => 'Usuario deslogado'], Response::HTTP_FORBIDDEN);
+            }
+
+            $musics = $this->model->listMusicsAll($id);
+
+            if(count($musics) > 0){
+                $musics['total'] = count($musics);
+                return response()->json($musics, Response::HTTP_OK);
+            }
+    
+            return response()->json(['total' => 0], Response::HTTP_OK);    
+        } catch (QueryException $exception) {
+            return response()->json(['error' => 'Erro interno do Servidor'], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+       
+    }
     
 }

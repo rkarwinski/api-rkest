@@ -309,5 +309,37 @@ class Spotify extends Model
         return $return;        
         
     }   
+
+    public function listAll(string $id ) : array
+    {
+        $return = [];
+        
+        $sql = "SELECT sp.* FROM spotify_playlists sp
+        INNER JOIN usuarios u ON u.email = sp.user_id
+        WHERE u.id = '{$id}'";
+
+        $aReturn = DB::select($sql);
+        
+        if(isset($aReturn) && is_array($aReturn)){
+            $return = $aReturn; 
+        }
+
+        return $return;
+    }
+
+    public function listMusicsAll(string $id ) : array
+    {
+        $return = [];
+        
+        $sql = "SELECT * FROM spotify_playlist_tracks WHERE playlist_id = '{$id}'";
+
+        $aReturn = DB::select($sql);
+        
+        if(isset($aReturn) && is_array($aReturn)){
+            $return = $aReturn; 
+        }
+
+        return $return;
+    }
     
 }

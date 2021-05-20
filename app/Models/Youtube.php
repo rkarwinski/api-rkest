@@ -273,5 +273,38 @@ class Youtube extends Model
         return $return;        
         
     }   
+
+    public function listAll(string $id ) : array
+    {
+        $return = [];
+        
+        $sql = "SELECT yt.* FROM youtube_playlists yt
+        INNER JOIN usuarios u ON u.email = yt.user_id
+        WHERE u.id = '{$id}'";
+
+        $aReturn = DB::select($sql);
+        
+        if(isset($aReturn) && is_array($aReturn)){
+            $return = $aReturn; 
+        }
+
+        return $return;
+    }
+
+    public function listMusicsAll(string $id ) : array
+    {
+        $return = [];
+        
+        $sql = "SELECT * FROM youtube_playlist_tracks WHERE playlist_id = '{$id}'";
+
+        $aReturn = DB::select($sql);
+        
+        if(isset($aReturn) && is_array($aReturn)){
+            $return = $aReturn; 
+        }
+
+        return $return;
+    }
+    
     
 }
